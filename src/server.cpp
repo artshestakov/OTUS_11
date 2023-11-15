@@ -1,4 +1,5 @@
 #include "server.h"
+#include "utils.h"
 //-----------------------------------------------------------------------------
 Server::Server(boost::asio::io_service& ios, short port)
     : m_IOS(ios), m_Acceptor(ios, tcp::endpoint(tcp::v4(), port))
@@ -20,8 +21,7 @@ void Server::handle_accept(std::shared_ptr<Session> s, const boost::system::erro
         return;
     }
 
-    auto rmt = s->get_socket().remote_endpoint();
-    std::cout << "Accept connection from " << rmt.address().to_string() << ":" << rmt.port() << std::endl;
+    std::cout << "Accepted connection from " << utils::get_socket_address(s) << std::endl;
 
     s->start_async_read();
     s = std::make_shared<Session>(m_IOS);

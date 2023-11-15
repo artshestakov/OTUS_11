@@ -1,4 +1,5 @@
 #include "session.h"
+#include "utils.h"
 //-----------------------------------------------------------------------------
 Session::Session(boost::asio::io_service& ios)
     : m_Socket(ios)
@@ -27,9 +28,20 @@ void Session::start_async_read()
 //-----------------------------------------------------------------------------
 void Session::handle_read(std::shared_ptr<Session>& s, const boost::system::error_code& e, size_t bytes)
 {
+    std::string client_address = utils::get_socket_address(s);
+
     if (e)
     {
-        std::cout << "Can't read data from client: " << e.message() << std::endl;
+        //Определим, а вдруг клиент отключился
+        if (e == boost::asio::error::connection_reset ||
+            e == boost::asio::error::eof)
+        {
+            std::cout << "Disconnected " << client_address << std::endl;
+        }
+        else //А вот тут уже ошибка
+        {
+            std::cout << "Can't read data from client " << client_address << ": " << e.message() << std::endl;
+        }
         return;
     }
 
@@ -55,9 +67,7 @@ void Session::handle_read(std::shared_ptr<Session>& s, const boost::system::erro
     //Выводим на консоль только в случае, если что-то осталось после формирования выше
     if (bytes > 0)
     {
-        auto rmt = s->get_socket().remote_endpoint();
-        std::cout << "Accept data from " << rmt.address().to_string() << ":" <<
-            rmt.port() << ": " << data << std::endl;
+        std::cout << "Accept data from " << client_address << ": "  << data << std::endl;
     }
 
     //Чистим буфер и запускаем процесс асинхронного чтения
