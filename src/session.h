@@ -21,6 +21,7 @@ public:
 
 private:
     bool execute_command(const std::string& cmd, std::string &error_string);
+    bool execute_insert(const std::vector<std::string> &insert_vec, std::string &error_string);
 
 private:
     tcp::socket m_Socket;

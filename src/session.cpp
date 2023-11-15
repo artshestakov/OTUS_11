@@ -81,30 +81,37 @@ bool Session::execute_command(const std::string& cmd, std::string& error_string)
 
     if (command_type == "insert" && v.size() == 4)
     {
-        std::string table_name = v[1];
-
-        uint64_t id = 0;
-        if (auto a = utils::string_to_uint64(v[2]); a)
-        {
-            id = a.value();
-        }
-        else
-        {
-            error_string = "Invalid ID!";
-            return false;
-        }
-
-        std::string name = v[3];
-
-        m_Database[table_name].emplace_back(Table
-            {
-                id, name
-            });
+        return execute_insert(v, error_string);
     }
     else
     {
         error_string = "Invalid format!";
     }
+
+    return false;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_insert(const std::vector<std::string>& insert_vec, std::string& error_string)
+{
+    std::string table_name = insert_vec[1];
+
+    uint64_t id = 0;
+    if (auto a = utils::string_to_uint64(insert_vec[2]); a)
+    {
+        id = a.value();
+    }
+    else
+    {
+        error_string = "Invalid ID!";
+        return false;
+    }
+
+    std::string name = insert_vec[3];
+
+    m_Database[table_name].emplace_back(Table
+        {
+            id, name
+        });
 
     return true;
 }
