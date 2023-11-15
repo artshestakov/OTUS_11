@@ -45,33 +45,67 @@ void Session::handle_read(std::shared_ptr<Session>& s, const boost::system::erro
         return;
     }
 
-    std::string data;
+    std::string error_string;
 
-    //Если данные пришли - формируем вывод на консоль
-    if (bytes > 0)
+    //Формируем пришедшие команды от клиента в список
+    auto commands = utils::split_string(std::string(m_Data.begin(), m_Data.begin() + bytes), '\n');
+    for (const auto& command : commands)
     {
-        data = std::string(m_Data.begin(), m_Data.begin() + bytes);
+        //Выполняем очередную команду, формируем ответ в зависимости от результата и отвечаем клиенту
+        bool res = execute_command(command, error_string);
+        
+        std::string answer = res ?
+            "OK" :
+            "Error in command: " + command + "\n" + error_string;
 
-        //Учтём, что последним символом может быть перевод строки. Он нам не нужен
-        if (data.back() == '\n')
-        {
-            data.pop_back();
-            --bytes;
-        }
-    }
-    else //Данных нет - так и сообщим
-    {
-        data = "NO DATA";
-    }
-
-    //Выводим на консоль только в случае, если что-то осталось после формирования выше
-    if (bytes > 0)
-    {
-        std::cout << "Accept data from " << client_address << ": "  << data << std::endl;
+        s->get_socket().write_some(boost::asio::buffer(answer, answer.size()));
     }
 
     //Чистим буфер и запускаем процесс асинхронного чтения
     std::fill(m_Data.begin(), m_Data.end(), '\0');
     start_async_read();
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_command(const std::string& cmd, std::string& error_string)
+{
+    //Парсим команду
+    auto v = utils::split_string(cmd, ' ');
+    if (v.size() == 0)
+    {
+        error_string = "Invalid format!";
+        return false;
+    }
+
+    std::string command_type = v.front();
+    utils::string_to_lower(command_type);
+
+    if (command_type == "insert" && v.size() == 4)
+    {
+        std::string table_name = v[1];
+
+        uint64_t id = 0;
+        if (auto a = utils::string_to_uint64(v[2]); a)
+        {
+            id = a.value();
+        }
+        else
+        {
+            error_string = "Invalid ID!";
+            return false;
+        }
+
+        std::string name = v[3];
+
+        m_Database[table_name].emplace_back(Table
+            {
+                id, name
+            });
+    }
+    else
+    {
+        error_string = "Invalid format!";
+    }
+
+    return true;
 }
 //-----------------------------------------------------------------------------

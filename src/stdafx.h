@@ -2,6 +2,7 @@
 //-----------------------------------------------------------------------------
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
 //-----------------------------------------------------------------------------
