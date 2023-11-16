@@ -11,6 +11,12 @@ private:
         std::string Name;
     };
 
+    struct SessionContext
+    {
+        std::string ErrorMessage;
+        std::string Answer;
+    };
+
 public:
     Session(boost::asio::io_service& ios);
     ~Session();
@@ -20,8 +26,9 @@ public:
     void handle_read(std::shared_ptr<Session>& s, const boost::system::error_code& e, size_t bytes);
 
 private:
-    bool execute_command(const std::string& cmd, std::string &error_string);
-    bool execute_insert(const std::vector<std::string> &insert_vec, std::string &error_string);
+    bool execute_command(SessionContext &ctx, const std::string& cmd);
+    bool execute_select(SessionContext& ctx, const std::string& table_name);
+    bool execute_insert(SessionContext& ctx, const std::vector<std::string> &insert_vec);
 
 private:
     tcp::socket m_Socket;

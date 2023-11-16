@@ -45,18 +45,30 @@ void Session::handle_read(std::shared_ptr<Session>& s, const boost::system::erro
         return;
     }
 
-    std::string error_string;
-
     //Формируем пришедшие команды от клиента в список
     auto commands = utils::split_string(std::string(m_Data.begin(), m_Data.begin() + bytes), '\n');
     for (const auto& command : commands)
     {
+        SessionContext ctx;
+
         //Выполняем очередную команду, формируем ответ в зависимости от результата и отвечаем клиенту
-        bool res = execute_command(command, error_string);
+        bool res = execute_command(ctx, command);
         
-        std::string answer = res ?
-            "OK" :
-            "Error in command: " + command + "\n" + error_string;
+        std::string answer;
+        if (res)
+        {
+            answer = "OK";
+
+            if (!ctx.Answer.empty())
+            {
+                answer += "\n" + ctx.Answer;
+            }
+        }
+        else
+        {
+            answer = ctx.ErrorMessage;
+        }
+        answer += '\n';
 
         s->get_socket().write_some(boost::asio::buffer(answer, answer.size()));
     }
@@ -66,32 +78,63 @@ void Session::handle_read(std::shared_ptr<Session>& s, const boost::system::erro
     start_async_read();
 }
 //-----------------------------------------------------------------------------
-bool Session::execute_command(const std::string& cmd, std::string& error_string)
+bool Session::execute_command(SessionContext& ctx, const std::string& cmd)
 {
     //Парсим команду
     auto v = utils::split_string(cmd, ' ');
-    if (v.size() == 0)
+    size_t v_size = v.size();
+    if (v_size == 0)
     {
-        error_string = "Invalid format!";
+        ctx.ErrorMessage = "Invalid format!";
         return false;
     }
 
     std::string command_type = v.front();
     utils::string_to_lower(command_type);
 
-    if (command_type == "insert" && v.size() == 4)
+    if (command_type == "select" && v_size == 2)
     {
-        return execute_insert(v, error_string);
+        return execute_select(ctx, v[1]);
+    }
+    else if (command_type == "insert" && v_size == 4)
+    {
+        return execute_insert(ctx, v);
     }
     else
     {
-        error_string = "Invalid format!";
+        ctx.ErrorMessage = "Invalid command: " + command_type;
     }
 
     return false;
 }
 //-----------------------------------------------------------------------------
-bool Session::execute_insert(const std::vector<std::string>& insert_vec, std::string& error_string)
+bool Session::execute_select(SessionContext& ctx, const std::string& table_name)
+{
+    auto it = m_Database.find(table_name);
+    if (it == m_Database.end())
+    {
+        //Такая таблица не найдена
+        ctx.ErrorMessage = "Table \"" + table_name + "\" not found";
+        return false;
+    }
+
+    //Если таблица пустая, так и сообщим
+    if (it->second.empty())
+    {
+        ctx.Answer = "Table \"" + table_name + "\" is empty";
+    }
+    else //Таблица не пустая - выводим
+    {
+        for (const auto& record : it->second)
+        {
+            ctx.Answer = std::to_string(record.ID) + "\t" + record.Name;
+        }
+    }
+
+    return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_insert(SessionContext& ctx, const std::vector<std::string>& insert_vec)
 {
     std::string table_name = insert_vec[1];
 
@@ -102,7 +145,7 @@ bool Session::execute_insert(const std::vector<std::string>& insert_vec, std::st
     }
     else
     {
-        error_string = "Invalid ID!";
+        ctx.ErrorMessage = "Invalid ID!";
         return false;
     }
 
