@@ -112,6 +112,10 @@ bool Session::execute_command(SessionContext& ctx, const std::string& cmd)
     {
         return execute_truncate(ctx, v[1]);
     }
+    else if (command_type == "intersection" && v_size == 1)
+    {
+        return execute_intersection(ctx);
+    }
     else
     {
         ctx.ErrorMessage = "Invalid command: " + command_type;
@@ -194,13 +198,12 @@ bool Session::execute_insert(SessionContext& ctx, const std::vector<std::string>
                 return false;
             }
         }
+
+        it->second.emplace_back(Record{ id, name });
     }
     else //Таблицы нет - добавляем таблицу и запись в неё
     {
-        m_Database[table_name].emplace_back(Record
-            {
-                id, name
-            });
+        m_Database[table_name].emplace_back(Record{ id, name });
     }
 
     return true;
@@ -258,6 +261,11 @@ bool Session::execute_truncate(SessionContext& ctx, const std::string& table_nam
     }
 
     m_Database.erase(table_name);
+    return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_intersection(SessionContext& ctx)
+{
     return true;
 }
 //-----------------------------------------------------------------------------

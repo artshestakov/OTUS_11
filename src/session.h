@@ -33,6 +33,7 @@ private:
     bool execute_insert(SessionContext& ctx, const std::vector<std::string> &insert_vec);
     bool execute_delete(SessionContext& ctx, const std::string& table_name, const std::string& id_str);
     bool execute_truncate(SessionContext& ctx, const std::string& table_name);
+    bool execute_intersection(SessionContext& ctx);
 
 private:
     std::optional<uint64_t> string_to_uint64(SessionContext& ctx, const std::string& s);
