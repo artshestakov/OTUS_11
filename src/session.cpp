@@ -100,6 +100,10 @@ bool Session::execute_command(SessionContext& ctx, const std::string& cmd)
     {
         return execute_insert(ctx, v);
     }
+    else if (command_type == "delete" && v_size == 3)
+    {
+        return execute_delete(ctx, v[1], v[2]);
+    }
     else
     {
         ctx.ErrorMessage = "Invalid command: " + command_type;
@@ -110,22 +114,21 @@ bool Session::execute_command(SessionContext& ctx, const std::string& cmd)
 //-----------------------------------------------------------------------------
 bool Session::execute_select(SessionContext& ctx, const std::string& table_name)
 {
-    auto it = m_Database.find(table_name);
-    if (it == m_Database.end())
+    //Проверим, есть ли такая таблица
+    Table* tbl = get_table(ctx, table_name);
+    if (!tbl)
     {
-        //Такая таблица не найдена
-        ctx.ErrorMessage = "Table \"" + table_name + "\" not found";
         return false;
     }
 
     //Если таблица пустая, так и сообщим
-    if (it->second.empty())
+    if (tbl->empty())
     {
         ctx.Answer = "Table \"" + table_name + "\" is empty";
     }
     else //Таблица не пустая - выводим
     {
-        for (const auto& record : it->second)
+        for (const auto& record : (*tbl))
         {
             ctx.Answer = std::to_string(record.ID) + "\t" + record.Name;
         }
@@ -151,11 +154,81 @@ bool Session::execute_insert(SessionContext& ctx, const std::vector<std::string>
 
     std::string name = insert_vec[3];
 
-    m_Database[table_name].emplace_back(Table
+    m_Database[table_name].emplace_back(Record
         {
             id, name
         });
 
     return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_delete(SessionContext& ctx, const std::string& table_name, const std::string& id_str)
+{
+    //Проверим, есть ли такая таблица
+    Table* tbl = get_table(ctx, table_name);
+    if (!tbl)
+    {
+        return false;
+    }
+
+    auto id = string_to_uint64(ctx, id_str);
+    if (!id)
+    {
+        return false;
+    }
+
+    bool found = false;
+
+    //Поищем запись с соответствующим id
+    for (size_t i = 0, c = tbl->size(); i < c; ++i)
+    {
+        Record& record = (*tbl)[i];
+        found = record.ID == id;
+
+        //Если запись нашли - удаляем её
+        if (found)
+        {
+            auto it_beg = tbl->begin();
+            std::advance(it_beg, i);
+            tbl->erase(it_beg);
+            break;
+        }
+    }
+
+    //Сообщим клиенту, что записи с таким id нет
+    if (!found)
+    {
+        ctx.ErrorMessage = "Record with id " + id_str + " not found";
+        return false;
+    }
+
+    return true;
+}
+//-----------------------------------------------------------------------------
+std::optional<uint64_t> Session::string_to_uint64(SessionContext& ctx, const std::string& s)
+{
+    uint64_t id = 0;
+    if (auto a = utils::string_to_uint64(s); a)
+    {
+        id = a.value();
+    }
+    else
+    {
+        ctx.ErrorMessage = "Invalid ID";
+        return std::nullopt;
+    }
+
+    return id;
+}
+//-----------------------------------------------------------------------------
+Session::Table* Session::get_table(SessionContext& ctx, const std::string& table_name)
+{
+    auto it = m_Database.find(table_name);
+    if (it == m_Database.end())
+    {
+        ctx.ErrorMessage = "Table \"" + table_name + "\" not found";
+        return nullptr;
+    }
+    return &it->second;
 }
 //-----------------------------------------------------------------------------
