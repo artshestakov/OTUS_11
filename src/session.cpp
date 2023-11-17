@@ -108,6 +108,10 @@ bool Session::execute_command(SessionContext& ctx, const std::string& cmd)
     {
         return execute_delete(ctx, v[1], v[2]);
     }
+    else if (command_type == "truncate" && v_size == 2)
+    {
+        return execute_truncate(ctx, v[1]);
+    }
     else
     {
         ctx.ErrorMessage = "Invalid command: " + command_type;
@@ -222,6 +226,18 @@ bool Session::execute_delete(SessionContext& ctx, const std::string& table_name,
         return false;
     }
 
+    return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_truncate(SessionContext& ctx, const std::string& table_name)
+{
+    Table* tbl = get_table(ctx, table_name);
+    if (!tbl)
+    {
+        return false;
+    }
+
+    m_Database.erase(table_name);
     return true;
 }
 //-----------------------------------------------------------------------------
