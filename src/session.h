@@ -37,7 +37,9 @@ private:
 
 private:
     std::optional<uint64_t> string_to_uint64(SessionContext& ctx, const std::string& s);
-    Session::Table* get_table(SessionContext &ctx, const std::string& table_name);
+    Session::Table* get_table(const std::string& table_name, SessionContext* ctx = nullptr);
+    bool exists_id(const Table& table, uint64_t id);
+    std::string get_name(const std::string& table_name, uint64_t id);
 
 private:
     tcp::socket m_Socket;

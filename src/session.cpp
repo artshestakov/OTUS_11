@@ -127,7 +127,7 @@ bool Session::execute_command(SessionContext& ctx, const std::string& cmd)
 bool Session::execute_select(SessionContext& ctx, const std::string& table_name)
 {
     //Проверим, есть ли такая таблица
-    Table* tbl = get_table(ctx, table_name);
+    Table* tbl = get_table(table_name, &ctx);
     if (!tbl)
     {
         return false;
@@ -212,7 +212,7 @@ bool Session::execute_insert(SessionContext& ctx, const std::vector<std::string>
 bool Session::execute_delete(SessionContext& ctx, const std::string& table_name, const std::string& id_str)
 {
     //Проверим, есть ли такая таблица
-    Table* tbl = get_table(ctx, table_name);
+    Table* tbl = get_table(table_name, &ctx);
     if (!tbl)
     {
         return false;
@@ -254,7 +254,7 @@ bool Session::execute_delete(SessionContext& ctx, const std::string& table_name,
 //-----------------------------------------------------------------------------
 bool Session::execute_truncate(SessionContext& ctx, const std::string& table_name)
 {
-    Table* tbl = get_table(ctx, table_name);
+    Table* tbl = get_table(table_name, &ctx);
     if (!tbl)
     {
         return false;
@@ -266,6 +266,55 @@ bool Session::execute_truncate(SessionContext& ctx, const std::string& table_nam
 //-----------------------------------------------------------------------------
 bool Session::execute_intersection(SessionContext& ctx)
 {
+    size_t table_count = m_Database.size();
+    if (table_count == 1)
+    {
+        ctx.ErrorMessage = "ERR for this operator you need to have more one table";
+        return false;
+    }
+    --table_count;
+
+    //Получаем ссылку на первую таблицу. От неё и будем отталкиваться
+    const Table& first_table = m_Database.begin()->second;
+
+    //Словарь, в котором храним идентификатор, и список таблиц, в которых этот идентификатор будет найден
+    std::unordered_map<uint64_t, std::vector<std::string>> m_temp;
+
+    //Начинаем проверку остальных таблиц: пробегаемся по всем таблицам, кроме первой
+    for (auto it = std::next(m_Database.begin()); it != m_Database.end(); ++it)
+    {
+        //Ты тут пробегаемся по первой таблице и ищём сопадения идентификаторов в других таблицах
+        for (const auto& record : first_table)
+        {
+            //Если нашли - фиксируем такой-то идентификатор и таблицу, в которой он был найден
+            if (exists_id(it->second, record.ID))
+            {
+                m_temp[record.ID].emplace_back(it->first);
+            }
+        }
+
+    }
+
+    //Пробегаемся по словарю найденных совпадений
+    for (auto it = m_temp.begin(); it != m_temp.end(); ++it)
+    {
+        //Пропускаем идентификаторы, которые не содержатся во всех таблицах
+        if (it->second.size() != table_count)
+        {
+            continue;
+        }
+
+        ctx.Answer += std::to_string(it->first) + "," + get_name(m_Database.begin()->first, it->first) + ",";
+
+        for (const std::string& table_name : it->second)
+        {
+            ctx.Answer += get_name(table_name, it->first) + ",";
+        }
+
+        utils::string_rm_right(ctx.Answer, 1);
+        ctx.Answer += "\n";
+    }
+
     return true;
 }
 //-----------------------------------------------------------------------------
@@ -285,14 +334,42 @@ std::optional<uint64_t> Session::string_to_uint64(SessionContext& ctx, const std
     return id;
 }
 //-----------------------------------------------------------------------------
-Session::Table* Session::get_table(SessionContext& ctx, const std::string& table_name)
+Session::Table* Session::get_table(const std::string& table_name, SessionContext* ctx)
 {
     auto it = m_Database.find(table_name);
     if (it == m_Database.end())
     {
-        ctx.ErrorMessage = "Table \"" + table_name + "\" not found";
+        if (ctx)
+        {
+            ctx->ErrorMessage = "Table \"" + table_name + "\" not found";
+        }
         return nullptr;
     }
     return &it->second;
+}
+//-----------------------------------------------------------------------------
+bool Session::exists_id(const Table& table, uint64_t id)
+{
+    for (const auto& record : table)
+    {
+        if (record.ID == id)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+//-----------------------------------------------------------------------------
+std::string Session::get_name(const std::string& table_name, uint64_t id)
+{
+    Table* table = get_table(table_name);
+    for (const auto& record : (*table))
+    {
+        if (record.ID == id)
+        {
+            return record.Name;
+        }
+    }
+    return std::string();
 }
 //-----------------------------------------------------------------------------
