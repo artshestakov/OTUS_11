@@ -27,13 +27,17 @@ public:
     void handle_read(std::shared_ptr<Session>& s, const boost::system::error_code& e, size_t bytes);
 
 private:
-    bool execute_command(SessionContext &ctx, const std::string& cmd);
-    bool execute_select(SessionContext& ctx, const std::string& table_name);
-    bool execute_selectall(SessionContext& ctx);
-    bool execute_insert(SessionContext& ctx, const std::vector<std::string> &insert_vec);
-    bool execute_delete(SessionContext& ctx, const std::string& table_name, const std::string& id_str);
+    bool execute_command(SessionContext& ctx, const std::string& cmd);
+
+    bool execute_insert(SessionContext& ctx, const std::vector<std::string>& insert_vec);
     bool execute_truncate(SessionContext& ctx, const std::string& table_name);
     bool execute_intersection(SessionContext& ctx);
+    bool execute_symmetric_difference(SessionContext& ctx);
+
+    //Дополнительные методы вне условия задачи для демонистрации
+    bool execute_select(SessionContext& ctx, const std::string& table_name);
+    bool execute_selectall(SessionContext& ctx);
+    bool execute_delete(SessionContext& ctx, const std::string& table_name, const std::string& id_str);
 
 private:
     std::optional<uint64_t> string_to_uint64(SessionContext& ctx, const std::string& s);

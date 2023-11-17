@@ -53,7 +53,7 @@ void Session::handle_read(std::shared_ptr<Session>& s, const boost::system::erro
 
         //Выполняем очередную команду, формируем ответ в зависимости от результата и отвечаем клиенту
         bool res = execute_command(ctx, command);
-        
+
         std::string answer;
         if (res)
         {
@@ -116,53 +116,16 @@ bool Session::execute_command(SessionContext& ctx, const std::string& cmd)
     {
         return execute_intersection(ctx);
     }
+    else if (command_type == "symmetric_difference" && v_size == 1)
+    {
+        return execute_symmetric_difference(ctx);
+    }
     else
     {
         ctx.ErrorMessage = "Invalid command: " + command_type;
     }
 
     return false;
-}
-//-----------------------------------------------------------------------------
-bool Session::execute_select(SessionContext& ctx, const std::string& table_name)
-{
-    //Проверим, есть ли такая таблица
-    Table* tbl = get_table(table_name, &ctx);
-    if (!tbl)
-    {
-        return false;
-    }
-
-    ctx.Answer += table_name + ":\n";
-
-    //Если таблица пустая, так и сообщим
-    if (tbl->empty())
-    {
-        ctx.Answer += "Table \"" + table_name + "\" is empty";
-    }
-    else //Таблица не пустая - выводим
-    {
-        for (const auto& record : (*tbl))
-        {
-            ctx.Answer += std::to_string(record.ID) + "\t" + record.Name + "\n";
-        }
-    }
-
-    return true;
-}
-//-----------------------------------------------------------------------------
-bool Session::execute_selectall(SessionContext& ctx)
-{
-    //Пробегаемся по таблицам
-    for (const auto& table : m_Database)
-    {
-        if (!execute_select(ctx, table.first))
-        {
-            return false;
-        }
-        ctx.Answer += "\n";
-    }
-    return true;
 }
 //-----------------------------------------------------------------------------
 bool Session::execute_insert(SessionContext& ctx, const std::vector<std::string>& insert_vec)
@@ -209,49 +172,6 @@ bool Session::execute_insert(SessionContext& ctx, const std::vector<std::string>
     return true;
 }
 //-----------------------------------------------------------------------------
-bool Session::execute_delete(SessionContext& ctx, const std::string& table_name, const std::string& id_str)
-{
-    //Проверим, есть ли такая таблица
-    Table* tbl = get_table(table_name, &ctx);
-    if (!tbl)
-    {
-        return false;
-    }
-
-    auto id = string_to_uint64(ctx, id_str);
-    if (!id)
-    {
-        return false;
-    }
-
-    bool found = false;
-
-    //Поищем запись с соответствующим id
-    for (size_t i = 0, c = tbl->size(); i < c; ++i)
-    {
-        Record& record = (*tbl)[i];
-        found = record.ID == id;
-
-        //Если запись нашли - удаляем её
-        if (found)
-        {
-            auto it_beg = tbl->begin();
-            std::advance(it_beg, i);
-            tbl->erase(it_beg);
-            break;
-        }
-    }
-
-    //Сообщим клиенту, что записи с таким id нет
-    if (!found)
-    {
-        ctx.ErrorMessage = "Record with id " + id_str + " not found";
-        return false;
-    }
-
-    return true;
-}
-//-----------------------------------------------------------------------------
 bool Session::execute_truncate(SessionContext& ctx, const std::string& table_name)
 {
     Table* tbl = get_table(table_name, &ctx);
@@ -292,7 +212,6 @@ bool Session::execute_intersection(SessionContext& ctx)
                 m_temp[record.ID].emplace_back(it->first);
             }
         }
-
     }
 
     //Пробегаемся по словарю найденных совпадений
@@ -313,6 +232,96 @@ bool Session::execute_intersection(SessionContext& ctx)
 
         utils::string_rm_right(ctx.Answer, 1);
         ctx.Answer += "\n";
+    }
+
+    return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_symmetric_difference(SessionContext& ctx)
+{
+    (void)ctx;
+    return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_select(SessionContext& ctx, const std::string& table_name)
+{
+    //Проверим, есть ли такая таблица
+    Table* tbl = get_table(table_name, &ctx);
+    if (!tbl)
+    {
+        return false;
+    }
+
+    ctx.Answer += table_name + ":\n";
+
+    //Если таблица пустая, так и сообщим
+    if (tbl->empty())
+    {
+        ctx.Answer += "Table \"" + table_name + "\" is empty";
+    }
+    else //Таблица не пустая - выводим
+    {
+        for (const auto& record : (*tbl))
+        {
+            ctx.Answer += std::to_string(record.ID) + "\t" + record.Name + "\n";
+        }
+    }
+
+    return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_selectall(SessionContext& ctx)
+{
+    //Пробегаемся по таблицам
+    for (const auto& table : m_Database)
+    {
+        if (!execute_select(ctx, table.first))
+        {
+            return false;
+        }
+        ctx.Answer += "\n";
+    }
+    return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_delete(SessionContext& ctx, const std::string& table_name, const std::string& id_str)
+{
+    //Проверим, есть ли такая таблица
+    Table* tbl = get_table(table_name, &ctx);
+    if (!tbl)
+    {
+        return false;
+    }
+
+    auto id = string_to_uint64(ctx, id_str);
+    if (!id)
+    {
+        return false;
+    }
+
+    bool found = false;
+
+    //Поищем запись с соответствующим id
+    for (size_t i = 0, c = tbl->size(); i < c; ++i)
+    {
+        Record& record = (*tbl)[i];
+        found = record.ID == id;
+
+        //Если запись нашли - удаляем её
+        if (found)
+        {
+            auto it_beg = tbl->begin();
+            std::advance(it_beg, i);
+            tbl->erase(it_beg);
+            break;
+        }
+    }
+
+    //Сообщим клиенту, что записи с таким id нет
+    if (!found)
+    {
+        ctx.ErrorMessage = "Record with id " + id_str + " not found";
+        return false;
     }
 
     return true;

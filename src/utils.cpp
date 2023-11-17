@@ -59,7 +59,8 @@ std::optional<uint64_t> utils::string_to_uint64(const std::string& s)
         return std::stoull(s);
     }
     catch (const std::exception&)
-    { }
+    {
+    }
 
     return std::nullopt;
 }
