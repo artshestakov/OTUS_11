@@ -178,10 +178,30 @@ bool Session::execute_insert(SessionContext& ctx, const std::vector<std::string>
 
     std::string name = insert_vec[3];
 
-    m_Database[table_name].emplace_back(Record
+    //Проверим, есть ли такая таблица
+    auto it = m_Database.find(table_name);
+    if (it != m_Database.end())
+    {
+        //Таблица есть - проверим, нет ли уже такой записи
+
+        bool found = false;
+        for (const Record& record : it->second)
         {
-            id, name
-        });
+            found = record.ID == id;
+            if (found)
+            {
+                ctx.ErrorMessage = "ERR duplicate " + insert_vec[2];
+                return false;
+            }
+        }
+    }
+    else //Таблицы нет - добавляем таблицу и запись в неё
+    {
+        m_Database[table_name].emplace_back(Record
+            {
+                id, name
+            });
+    }
 
     return true;
 }
