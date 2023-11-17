@@ -68,7 +68,7 @@ void Session::handle_read(std::shared_ptr<Session>& s, const boost::system::erro
         {
             answer = ctx.ErrorMessage;
         }
-        answer += '\n';
+        answer += "\n";
 
         s->get_socket().write_some(boost::asio::buffer(answer, answer.size()));
     }
@@ -96,6 +96,10 @@ bool Session::execute_command(SessionContext& ctx, const std::string& cmd)
     {
         return execute_select(ctx, v[1]);
     }
+    else if (command_type == "selectall")
+    {
+        return execute_selectall(ctx);
+    }
     else if (command_type == "insert" && v_size == 4)
     {
         return execute_insert(ctx, v);
@@ -121,19 +125,35 @@ bool Session::execute_select(SessionContext& ctx, const std::string& table_name)
         return false;
     }
 
+    ctx.Answer += table_name + ":\n";
+
     //Если таблица пустая, так и сообщим
     if (tbl->empty())
     {
-        ctx.Answer = "Table \"" + table_name + "\" is empty";
+        ctx.Answer += "Table \"" + table_name + "\" is empty";
     }
     else //Таблица не пустая - выводим
     {
         for (const auto& record : (*tbl))
         {
-            ctx.Answer = std::to_string(record.ID) + "\t" + record.Name;
+            ctx.Answer += std::to_string(record.ID) + "\t" + record.Name + "\n";
         }
     }
 
+    return true;
+}
+//-----------------------------------------------------------------------------
+bool Session::execute_selectall(SessionContext& ctx)
+{
+    //Пробегаемся по таблицам
+    for (const auto& table : m_Database)
+    {
+        if (!execute_select(ctx, table.first))
+        {
+            return false;
+        }
+        ctx.Answer += "\n";
+    }
     return true;
 }
 //-----------------------------------------------------------------------------

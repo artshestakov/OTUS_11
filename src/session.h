@@ -29,6 +29,7 @@ public:
 private:
     bool execute_command(SessionContext &ctx, const std::string& cmd);
     bool execute_select(SessionContext& ctx, const std::string& table_name);
+    bool execute_selectall(SessionContext& ctx);
     bool execute_insert(SessionContext& ctx, const std::vector<std::string> &insert_vec);
     bool execute_delete(SessionContext& ctx, const std::string& table_name, const std::string& id_str);
 
