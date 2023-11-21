@@ -239,7 +239,41 @@ bool Session::execute_intersection(SessionContext& ctx)
 //-----------------------------------------------------------------------------
 bool Session::execute_symmetric_difference(SessionContext& ctx)
 {
-    (void)ctx;
+    //Пока реализуем поддержку только двух таблиц...
+    if (m_Database.size() != 2)
+    {
+        ctx.ErrorMessage = "Support symmetric difference for two tables only";
+        return false;
+    }
+
+    Table& table_a = m_Database.begin()->second;
+    Table& table_b = std::next(m_Database.begin())->second;
+
+    auto l_print = [&ctx](uint64_t id, const std::string& name_a, const std::string& name_b)
+    {
+        ctx.Answer += std::to_string(id) + "\t" + name_a + "\t" + name_b + "\n";
+    };
+
+    ctx.Answer = "ID\t" + m_Database.begin()->first + "\t" + std::next(m_Database.begin())->first + "\n";
+
+    //Пробегаемся с проверкой наличия по первой таблице
+    for (const Record& record : table_a)
+    {
+        if (!exists_id(table_b, record.ID))
+        {
+            l_print(record.ID, record.Name, std::string());
+        }
+    }
+
+    //И пробегаемся по второй таблице
+    for (const Record& record : table_b)
+    {
+        if (!exists_id(table_a, record.ID))
+        {
+            l_print(record.ID, std::string(), record.Name);
+        }
+    }
+
     return true;
 }
 //-----------------------------------------------------------------------------

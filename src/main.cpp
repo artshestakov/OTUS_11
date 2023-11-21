@@ -2,13 +2,18 @@
 //-----------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-    (void)argc;
-    (void)argv;
+    if (argc != 2)
+    {
+        std::cout << "You did not specified a port" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     try
     {
+        int port = std::stoi(argv[1]);
+
         boost::asio::io_service ios;
-        Server s(ios, 23071);
+        Server s(ios, port);
         ios.run();
     }
     catch (std::exception& e)

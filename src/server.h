@@ -5,7 +5,7 @@
 class Server
 {
 public:
-    Server(boost::asio::io_service& ios, short port);
+    Server(boost::asio::io_service& ios, int port);
     ~Server();
 
     void handle_accept(std::shared_ptr<Session> s, const boost::system::error_code& e);

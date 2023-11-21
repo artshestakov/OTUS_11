@@ -1,7 +1,7 @@
 #include "server.h"
 #include "utils.h"
 //-----------------------------------------------------------------------------
-Server::Server(boost::asio::io_service& ios, short port)
+Server::Server(boost::asio::io_service& ios, int port)
     : m_IOS(ios), m_Acceptor(ios, tcp::endpoint(tcp::v4(), port))
 {
     start_async_accept(std::make_shared<Session>(m_IOS));
